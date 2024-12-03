@@ -42,7 +42,7 @@
 #   Designation                 Version
 #   EtherNet/IP Interface       v1.6.3-68256f9.20240830
 #   IO-Link Master              v1.6.6
-#   VTUG Valve Terminal         tbd
+#   VTUG Valve Terminal         10
 #
 # -----------------------------------------------------------
 ### Software
