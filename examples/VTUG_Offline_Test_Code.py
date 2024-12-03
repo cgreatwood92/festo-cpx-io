@@ -22,19 +22,19 @@
 # -----------------------------------------------------------
 ### Hardware
 #
-#   Designation             Type Code                               Part Number     Quantity    Vendor
-#   Main power Cable        3-Wire Appliance and Power Tool Cord    PS615143        1           Bergen Industries
-#   Power supply unit       CACN-3A-1-5-G2                          8149580         1           Festo
-#   Connecting cable        NEBL-M8G4-E-5-N-LE4                     8065110         1           Festo
-#   Connecting cable        NEBC-D12G4-ES-1-S-R3G4-ET               8040451         1           Festo  
-#   EtherNet/IP interface   CPX-AP-I-EP-M12                         8086610         1           Festo
-#   H-rail mounting         CAFM-X4-H                               8095158         2           Festo
-#   Connecting cable        NEBC-D8G4-ES-0.3-N-S-D8G4-ET            8082902         1           Festo
-#   Connecting cable        NEBL-M8G4-E-0.3-N-M8G4                  8082904         1           Festo
-#   IO-Link Master          CPX-AP-I-4IOL-M12                       8086604         1           Festo
-#   Cover cap               ISK-M12                                 165592          1           Festo
-#   Cover cap               ISK-M8                                  177672          1           Festo
-#   Distributor             NEDU-L1R2-M12G5-M12LE-1R                8091516         1           Festo
+#   Designation                 Type Code                               Part Number     Quantity    Vendor
+#   Main power Cable            3-Wire Appliance and Power Tool Cord    PS615143        1           Bergen Industries
+#   Power supply unit           CACN-3A-1-5-G2                          8149580         1           Festo
+#   Connecting cable            NEBL-M8G4-E-5-N-LE4                     8065110         1           Festo
+#   Connecting cable            NEBC-D12G4-ES-1-S-R3G4-ET               8040451         1           Festo  
+#   EtherNet/IP interface       CPX-AP-I-EP-M12                         8086610         1           Festo
+#   H-rail mounting             CAFM-X4-H                               8095158         2           Festo
+#   Connecting cable            NEBC-D8G4-ES-0.3-N-S-D8G4-ET            8082902         1           Festo
+#   Connecting cable            NEBL-M8G4-E-0.3-N-M8G4                  8082904         1           Festo
+#   IO-Link Master              CPX-AP-I-4IOL-M12                       8086604         1           Festo
+#   Cover cap                   ISK-M12                                 165592          1           Festo
+#   Cover cap                   ISK-M8                                  177672          1           Festo
+#   Distributor                 NEDU-L1R2-M12G5-M12LE-1R                8091516         1           Festo
 #
 # -----------------------------------------------------------
 ### Firmware
@@ -59,29 +59,29 @@ print("--------------------\n")
 #
 ### Import - Basic System Modules
 #
-import sys # System Library
-import os # OperatingSystem Library
+import sys      # System Library
+import os       # OperatingSystem Library
 import struct
-import time # Time Module
+import time     # Time Module
 #
 ### Append System Path
+sys.path.append('C:\\Users\\lab4-local\\Documents\\GitHub\\festo-cpx-io')   # Add path to workspace directory
 sys.path.append('C:\\Users\\ColinGreatwood\\Documents\\GitHub\\festo-cpx-io')   # Add path to workspace directory
 #
 ### Import - Additional Module and Math Libraries
-from src.cpx_io.cpx_system.cpx_ap.cpx_ap import CpxAp   #CPX-AP Modules Library 
-from src.cpx_io.utils.boollist import bytes_to_boollist, boollist_to_bytes # Boolean conversion utility for managing the raw data going to/from VTUG
+from src.cpx_io.cpx_system.cpx_ap.cpx_ap import CpxAp           # CPX-AP Modules Library 
+from src.cpx_io.utils.boollist import boollist_to_bytes         # Boolean conversion utility for managing the raw data going to the I-Port VTUG
 #
 ### Variable Declaration
 xAllCoilInitState = False
-sIpAddress = '192.168.0.1'
-fModbusTimeout = 10.0       # Modbus timeout in seconds, as float. This value must be greater than fSleepTime.
-fSleepTime = 0.100          # Delay time for all sleep functions, in seconds
-iNumModules = 2             # Number of AP-I Modules in the entire system, including the fieldbus module
-iPort = 0                   # Value 0 indicates that the VTUG valve terminal is connected to the top port on the IOLM labeled Port 0.
-iTestCycles = 2            # Number of test cycles through the entire valve terminal and all available coils
+sIpAddress = '192.168.0.1'      # IP Address of the CPX-AP-I-EP-M12 module. Can be verified in Festo Automation Suite P0.12001 Default IP Address: 192.168.1.1
+fModbusTimeout = 10.0           # Modbus timeout in seconds, as float. This value must be greater than fSleepTime.
+fSleepTime = 0.250              # Delay time for all sleep functions, in seconds
+iNumModules = 2                 # Number of AP-I Modules in the entire system, including the fieldbus module
+iPort = 0                       # Value 0 indicates that the VTUG valve terminal is connected to the top port on the IOLM labeled Port 0.
+iTestCycles = 10                # Number of test cycles through the entire valve terminal and all available coils
 arrModuleTypecodes = ["cpx_ap_i_ep_m12", "cpx_ap_i_4iol_m12_variant_8"] # These must be in the expected order
-arrModuleParams = []        # Refer to CPX-AP-I-EP-M12 manual for parameter index numbers.
-#arrModuleParams = ["Setup monitoring load supply (PL) 24 V DC"] # Refer to CPX-AP-I-EP-M12 manual for parameter index numbers.
+arrModuleParams = []            # Refer to CPX-AP-I-EP-M12 manual for parameter index numbers.
 arrModuleParamValues = [1]
 arrIolmParams = ["Nominal Cycle Time", "Enable diagnosis of IO-Link device lost", "Validation & Backup", "Nominal Vendor ID", "DeviceID", "Port Mode"] # Refer to CPX-AP-I-4IOL-M12 manual for parameter index numbers.
 arrIolmParamValues = [0, True, "Type compatible Device V1.1", 333, 800, "IOL_AUTOSTART"]  # Port Mode must be set after Nominal Vendor ID and DeviceID
@@ -235,7 +235,7 @@ with CpxAp(ip_address=sIpAddress, timeout = fModbusTimeout) as myCPX:
             print(f"Aborting program. Please correct the type of module {m} to {arrModuleTypecodes[m]} and start program again.")
             print("--------------------\n")
             sys.exit("Aborting script: Condition not satisfied.")
-
+    
     ### Test - Type of VAEM Valve Terminal Interface
     # VTUG Valve Terminal Interface for this test should be VAEM-L1-S-16-PT or VAEM-L1-S-16-PTL. 
     # Other models are not currently supported by this test code.
@@ -272,7 +272,8 @@ with CpxAp(ip_address=sIpAddress, timeout = fModbusTimeout) as myCPX:
             )
 
     ### Write Module Parameters for CPX-AP-I-EP-M12 Module
-    print("  > Write: Fieldbus module does not have any parameters to be configured by this program.") # No parameters to write/setup for this module
+    for parameter in range(len(currentArrModuleParams)):
+        currentModule.write_module_parameter(currentArrModuleParams[parameter], currentArrModuleParamValues[parameter])
     print("SETUP - FIELDBUS MODULE - COMPLETE")
     print("--------------------\n")
 
@@ -285,7 +286,7 @@ with CpxAp(ip_address=sIpAddress, timeout = fModbusTimeout) as myCPX:
         if p.name in currentArrModuleParams:
             print(
                 f"{f'  > Read {p.name} (ID {i}):':<64}"
-                f"{f'{currentModule.read_module_parameter(i)[iPort]} {p.unit}':<32}"
+                f"{f'{currentModule.read_module_parameter(i)[iPort]} {p.unit}':<32}"    # Parameter reading is limited to the iPort channel only. It can show all ports if [iPort] is removed.
             ) 
     
     ### Write Module Parameters for CPX-AP-I-4IOL Module 
@@ -343,6 +344,8 @@ Module health - whatever is available
 #
 # -----------------------------------------------------------
 #region Termination
-    # myCPX.connected
 print("Program Completed")
+print("--------------------\n")
 myCPX.shutdown()
+#
+# -----------------------------------------------------------
