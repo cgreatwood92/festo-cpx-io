@@ -72,11 +72,13 @@ from src.cpx_io.cpx_system.cpx_ap.cpx_ap import CpxAp   #CPX-AP Modules Library
 from src.cpx_io.utils.boollist import bytes_to_boollist, boollist_to_bytes # Boolean conversion utility for managing the raw data going to/from VTUG
 #
 ### Variable Declaration
+xAllCoilInitState = False
 sIpAddress = '192.168.0.1'
 fModbusTimeout = 10.0       # Modbus timeout in seconds, as float. This value must be greater than fSleepTime.
 fSleepTime = 0.100          # Delay time for all sleep functions, in seconds
 iNumModules = 2             # Number of AP-I Modules in the entire system, including the fieldbus module
 iPort = 0                   # Value 0 indicates that the VTUG valve terminal is connected to the top port on the IOLM labeled Port 0.
+iTestCycles = 2            # Number of test cycles through the entire valve terminal and all available coils
 arrModuleTypecodes = ["cpx_ap_i_ep_m12", "cpx_ap_i_4iol_m12_variant_8"] # These must be in the expected order
 arrModuleParams = []        # Refer to CPX-AP-I-EP-M12 manual for parameter index numbers.
 #arrModuleParams = ["Setup monitoring load supply (PL) 24 V DC"] # Refer to CPX-AP-I-EP-M12 manual for parameter index numbers.
@@ -123,7 +125,7 @@ def initialize_valves(iModule: int, iChannel: int, iOutputDataLength: int, xStar
     return
 #
 # Function - Cycle Valves
-def cycle_valves(iModule: int, iChannel: int, iOutputDataLength: int, fCycleSleep: float, iNumCycles: int):
+def cycle_valves(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, fCycleSleep: float = 0.100, iNumCycles: int = 10):
     """
     Function to cycle all valve coils in order. 
 
@@ -142,9 +144,15 @@ def cycle_valves(iModule: int, iChannel: int, iOutputDataLength: int, fCycleSlee
     from datetime import datetime, timedelta
 
     ### Variable Declaration
+    fMinCycleSleep = 0.100              # Define minimum allowed sleep time between coil state changes, in milliseconds
     iMaxCycles = 1000                   # Define the maximum allowed cycles  
     iNumCoils = 8 * iOutputDataLength   # Calculate the number of coils
 
+    # Input Check - Check if fCycleSleep is below the minimum allowed sleep time
+    if fCycleSleep < fMinCycleSleep:
+        print(f"Warning: fCycleSleep is below the minimum allowed value of {fMinCycleSleep} seconds. Modifying to {fMinCycleSleep} seconds.")
+        fCycleSleep = fMinCycleSleep
+    
     # Input Check - Check if iNumCycles exceeds the maximum allowed cycles
     if iNumCycles > iMaxCycles:
         print(f"Error: iNumCycles exceeds the maximum allowed value of {iMaxCycles}. Aborting function.")
@@ -152,13 +160,13 @@ def cycle_valves(iModule: int, iChannel: int, iOutputDataLength: int, fCycleSlee
     else: 
         # Calculate test total execution time in seconds
         total_execution_time = iNumCycles * iNumCoils * 2 * fCycleSleep
-        print(f"Total execution time: {total_execution_time:.2f} seconds")
 
-        # Calculate the estimated completion time
+        # Calculate the estimated completion time in real-world computer system time format
         start_time = datetime.now()
         estimated_completion_time = start_time + timedelta(seconds=total_execution_time)
-        print(f"Estimated completion time: {estimated_completion_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"  > Estimated completion time: \t\t{estimated_completion_time.strftime('%Y-%m-%d %H:%M:%S')}")
 
+    # Perform Test for iNumCycles of All Coils
     for i in range(iNumCycles):
         # Initialize the list of valve states to OFF
         xCoilStateList = [False] * iNumCoils
@@ -182,7 +190,7 @@ def cycle_valves(iModule: int, iChannel: int, iOutputDataLength: int, fCycleSlee
     
     # Print current system time at the end of all cycles
     end_time = datetime.now()
-    print(f"System Time at Test Completion: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")  
+    print(f"  > System Time at Test Completion: \t{end_time.strftime('%Y-%m-%d %H:%M:%S')}")  
 
     #Return nothing
     return
@@ -304,11 +312,14 @@ with CpxAp(ip_address=sIpAddress, timeout = fModbusTimeout) as myCPX:
 # -----------------------------------------------------------    
     #region Operate
     ### Valve Test
+    print("OPERATE - VALVE TERMINAL TEST - IN PROGRESS") 
     # Initialize Valves
-    initialize_valves(currentModule, iPort, arrVAEMParamValues[0], False)
+    initialize_valves(currentModule, iPort, arrVAEMParamValues[0], xAllCoilInitState)
     
     # Cycle Valves
-    cycle_valves(currentModule, iPort, arrVAEMParamValues[0], fSleepTime, 10)
+    cycle_valves(currentModule, iPort, arrVAEMParamValues[0], fSleepTime, iTestCycles)
+    print("OPERATE - VALVE TERMINAL TEST - COMPLETE") 
+    print("--------------------\n")
 #
 # -----------------------------------------------------------    
 #region Add'l Features
