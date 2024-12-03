@@ -48,16 +48,16 @@
 ### Software
 #
 #   Designation                 Version
-#   Festo Automation Suite      2.8.0.417
+#   Festo Automation Suite      2.9.0.719
 #   FAS CPX-AP Plug-In          1.8.0.111
-#   FAS IO-Link Device Plug-In  1.1.1.1
+#   FAS IO-Link Device Plug-In  2.9.0.37
 #
 # -----------------------------------------------------------
 #region Header
 print("Program Started")
 print("--------------------\n")
 #
-### Import
+### Import - Basic System Modules
 #
 import sys # System Library
 import os # OperatingSystem Library
@@ -66,68 +66,149 @@ import time # Time Module
 #
 ### Append System Path
 sys.path.append('C:\\Users\\ColinGreatwood\\Documents\\GitHub\\festo-cpx-io')   # Add path to workspace directory
-from src.cpx_io.cpx_system.cpx_ap.cpx_ap import CpxAp   #CPX-AP Library 
+#
+### Import - Additional Module and Math Libraries
+from src.cpx_io.cpx_system.cpx_ap.cpx_ap import CpxAp   #CPX-AP Modules Library 
+from src.cpx_io.utils.boollist import bytes_to_boollist, boollist_to_bytes # Boolean conversion utility for managing the raw data going to/from VTUG
 #
 ### Variable Declaration
-iNumModules = 2
-iPort = 0   # Value 0 indicates that the VTUG valve terminal is connected to the top port on the IOLM labeled Port 0.
-iSleepTime = 0.250 # Delay time for all sleep functions, in seconds
+sIpAddress = '192.168.0.1'
+fModbusTimeout = 10.0       # Modbus timeout in seconds, as float. This value must be greater than fSleepTime.
+fSleepTime = 0.100          # Delay time for all sleep functions, in seconds
+iNumModules = 2             # Number of AP-I Modules in the entire system, including the fieldbus module
+iPort = 0                   # Value 0 indicates that the VTUG valve terminal is connected to the top port on the IOLM labeled Port 0.
 arrModuleTypecodes = ["cpx_ap_i_ep_m12", "cpx_ap_i_4iol_m12_variant_8"] # These must be in the expected order
-arrModuleParams = [20022]
+arrModuleParams = []        # Refer to CPX-AP-I-EP-M12 manual for parameter index numbers.
+#arrModuleParams = ["Setup monitoring load supply (PL) 24 V DC"] # Refer to CPX-AP-I-EP-M12 manual for parameter index numbers.
 arrModuleParamValues = [1]
-arrIolmParams = [20049, 20050, 20071, 20072, 20073, 20080]
-arrIolmParamValues = [0, True, 2, 3, 333, 800]
+arrIolmParams = ["Nominal Cycle Time", "Enable diagnosis of IO-Link device lost", "Validation & Backup", "Nominal Vendor ID", "DeviceID", "Port Mode"] # Refer to CPX-AP-I-4IOL-M12 manual for parameter index numbers.
+arrIolmParamValues = [0, True, "Type compatible Device V1.1", 333, 800, "IOL_AUTOSTART"]  # Port Mode must be set after Nominal Vendor ID and DeviceID
+arrVAEMParams = ["OutputDataLength"]
+arrVAEMParamValues = [4]
 #
-### Process Data Configuration
-# process data as dict
-def read_process_data_in(data):
-    """Read the process data and return as dict"""
-    #vtug procides 0 bytes in and 4 bytes out accroding to the specific VAEM/VTUG datasheet
-    # ehps provides 3 x UIntegerT16 "process data`` in" according to datasheet.
-    # you can unpack the data easily with stuct
-    vtug_data = struct.unpack("<HHHH", data)
-    # the last 16 bit value of this list is always 0 since ehps only uses 3*16 bit
-    # assert vtug_data[0] == 0
+# -----------------------------------------------------------
+#region Functions
+#
+# Function - Initialize Valves
+def initialize_valves(iModule: int, iChannel: int, iOutputDataLength: int, xStartCondition: bool):
+    """
+    Function to initialize a list of valve states, convert it to a byte list, and then execute the desired initialized state.
+    No confirmation of valve positions is included. 
+    
+    Parameters:
+    iModule (int): Integer indicating the position of the IO-Link Master in the AP System.
+    iChannel (int): Integer indicating the position of the valve terminal on the IO-Link Master. Port 0 (top) of the module is value 0.
+    iOutputDataLength (int): Integer indicating the number of control bytes (i.e PLC to Valve Terminal) for the valve terminal. Can be found in FAS or the Webserver.
+    xStartCondition (bool): If True, initialize all valves to ON; if False, initialize all valves to OFF.
+    
+    Returns:
+    None
+    """
+    # Calculate the number of coils
+    iNumCoils = 8 * iOutputDataLength
+    
+    # Initialize the list of valve states (all OFF initially)
+    xCoilInitStateList = [xStartCondition] * iNumCoils
+    
+    # Convert the boolean list to a byte list
+    bCoilInitStateList = boollist_to_bytes(xCoilInitStateList)
 
-    process_data_dict = {}
-    ('''
-    process_data_dict["Error"] = bool((vtug_data[0] >> 15) & 1)
-    process_data_dict["DirectionCloseFlag"] = bool((vtug_data[0] >> 14) & 1)
-    process_data_dict["DirectionOpenFlag"] = bool((vtug_data[0] >> 13) & 1)
-    process_data_dict["LatchDataOk"] = bool((vtug_data[0] >> 12) & 1)
-    process_data_dict["UndefinedPositionFlag"] = bool((vtug_data[0] >> 11) & 1)
-    process_data_dict["ClosedPositionFlag"] = bool((vtug_data[0] >> 10) & 1)
-    process_data_dict["GrippedPositionFlag"] = bool((vtug_data[0] >> 9) & 1)
-    process_data_dict["OpenedPositionFlag"] = bool((vtug_data[0] >> 8) & 1)
+    # Write the initialization values from the byte list to the valve terminal
+    iModule.write_channel(iChannel, bCoilInitStateList)
 
-    process_data_dict["Ready"] = bool((vtug_data[0] >> 6) & 1)
+    # Wait for 1 second for valve to achieve their desired initialized state                    
+    time.sleep(1.000)
+    
+    #Return nothing
+    return
+#
+# Function - Cycle Valves
+def cycle_valves(iModule: int, iChannel: int, iOutputDataLength: int, fCycleSleep: float, iNumCycles: int):
+    """
+    Function to cycle all valve coils in order. 
 
-    process_data_dict["ErrorNumber"] = vtug_data[1]
-    process_data_dict["ActualPosition"] = vtug_data[2]
-    ''')
-    return process_data_dict
+    Parameters:
+    iModule (int): Integer indicating the position of the IO-Link Master in the AP System.
+    iChannel (int): Integer indicating the position of the valve terminal on the IO-Link Master. Port 0 (top) of the module is value 0.
+    iOutputDataLength (int): Integer indicating the number of control bytes (i.e PLC to Valve Terminal) for the valve terminal. Can be found in FAS or the Webserver.
+    fCycleSleep (float): Float indicating the time for the coil states to be maintained before the next step in the cycle, in seconds. 
+    iNumCycles (int): Integer indicating the number of cycles to repeat the entire process. Not to exceed the maximum. 
 
+    Returns:
+    None
+    """
+    ### Import
+    #
+    from datetime import datetime, timedelta
+
+    ### Variable Declaration
+    iMaxCycles = 1000                   # Define the maximum allowed cycles  
+    iNumCoils = 8 * iOutputDataLength   # Calculate the number of coils
+
+    # Input Check - Check if iNumCycles exceeds the maximum allowed cycles
+    if iNumCycles > iMaxCycles:
+        print(f"Error: iNumCycles exceeds the maximum allowed value of {iMaxCycles}. Aborting function.")
+        sys.exit()
+    else: 
+        # Calculate test total execution time in seconds
+        total_execution_time = iNumCycles * iNumCoils * 2 * fCycleSleep
+        print(f"Total execution time: {total_execution_time:.2f} seconds")
+
+        # Calculate the estimated completion time
+        start_time = datetime.now()
+        estimated_completion_time = start_time + timedelta(seconds=total_execution_time)
+        print(f"Estimated completion time: {estimated_completion_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+    for i in range(iNumCycles):
+        # Initialize the list of valve states to OFF
+        xCoilStateList = [False] * iNumCoils
+
+        for j in range(iNumCoils):
+            # Set the coil to ON
+            xCoilStateList[j] = True
+            bCoilStateList = boollist_to_bytes(xCoilStateList)
+            iModule.write_channel(iChannel, bCoilStateList)
+
+            # Wait for fCycleSleep seconds for valve to achieve their desired initialized state and hold                   
+            time.sleep(fCycleSleep)
+
+            # Reset the coil to OFF
+            xCoilStateList[j] = False
+            bCoilStateList = boollist_to_bytes(xCoilStateList)
+            iModule.write_channel(iChannel, bCoilStateList)
+
+            # Wait for fCycleSleep seconds for valve to achieve their desired initialized state and hold                   
+            time.sleep(fCycleSleep)
+    
+    # Print current system time at the end of all cycles
+    end_time = datetime.now()
+    print(f"System Time at Test Completion: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")  
+
+    #Return nothing
+    return
+#
 # -----------------------------------------------------------
 #region Connect
 ### Connect
 #
-with CpxAp(ip_address="192.168.0.1", timeout=1.5) as myCPX:
+with CpxAp(ip_address=sIpAddress, timeout = fModbusTimeout) as myCPX:
     
     ### Print System Info to Default Docu_Path File
-    print("System Documentation")
-    print(f"Printing system documentation to docu_path folder: {myCPX.docu_path}")
+    print("SYSTEM DOCUMENTATION")
+    print(f"  > Printing system documentation to docu_path folder: {myCPX.docu_path}")
     print("--------------------\n")
-
-    #region Verify
+#
+# -----------------------------------------------------------
+#region Verify
     ### Test - Number of Modules
     print("TEST - NUMBER OF MODULES")        
-    print(f"Number of modules: {len(myCPX.modules)}")
+    print(f"  > Number of modules: {len(myCPX.modules)}")
     if len(myCPX.modules) == iNumModules:
         print("TEST - PASSED")
         print("--------------------\n")
     else:
         print("TEST - FAILED")
-        print("Aborting program. Please correct the number of system modules to {iNumModules} total and start program again.")
+        print(f"Aborting program. Please correct the number of system modules to {iNumModules} total and start program again.")
         print("--------------------\n")
         sys.exit("Aborting script: Condition not satisfied.")
 
@@ -137,32 +218,50 @@ with CpxAp(ip_address="192.168.0.1", timeout=1.5) as myCPX:
     print("TEST - TYPE OF MODULES")        
     for m in range(iNumModules):
         if myCPX.modules[m].name == arrModuleTypecodes[m]:
-            print(f"Type of module: {myCPX.modules[m].name}")
+            print(f"  > Type of module: {myCPX.modules[m].name}")
             if m == (iNumModules - 1):
                 print("TEST - PASSED")
                 print("--------------------\n")
         else:
             print("TEST - FAILED")
-            print("Aborting program. Please correct the type of module {m} to {arrModuleTypecodes[m]} and start program again.")
+            print(f"Aborting program. Please correct the type of module {m} to {arrModuleTypecodes[m]} and start program again.")
             print("--------------------\n")
             sys.exit("Aborting script: Condition not satisfied.")
 
-    ### Name Fieldbus Module and Sub-Modules for Program Use
-    cpxApIEp_1 = myCPX.modules[0]
-    cpxApI4iol_1 = myCPX.modules[1]
-
+    ### Test - Type of VAEM Valve Terminal Interface
+    # VTUG Valve Terminal Interface for this test should be VAEM-L1-S-16-PT or VAEM-L1-S-16-PTL. 
+    # Other models are not currently supported by this test code.
+    print("TEST - TYPE OF VAEM VALVE TERMINAL INTERFACE") 
+    currentModule = myCPX.modules[1]
+    currentArrModuleParams = arrVAEMParams
+    currentArrModuleParamValues = arrVAEMParamValues
+    print(f"  > Valve Terminal at IO-Link Port: {iPort}")
+    for i, p in currentModule.module_dicts.parameters.items():
+        if p.name in currentArrModuleParams:
+            bPortOutputDataLength = currentModule.read_module_parameter(i)[iPort]
+            print(f"  > Number of Output Bytes: {bPortOutputDataLength}")
+            if bPortOutputDataLength == arrVAEMParamValues[iPort]:
+                print("TEST - PASSED")
+                print("--------------------\n")
+            else:
+                print("TEST - FAILED")
+                print(f"Aborting program. Incorrect VAEM module detected. Please correct the module type to and start program again.")
+                print("--------------------\n")
+                sys.exit("Aborting script: Condition not satisfied.") 
+#
+# -----------------------------------------------------------
     #region Setup
     ### Read Module Parameters for CPX-AP-I-EP-M12 Module
-    print("SETUP - FIELDBUS MODULE - CPX-AP-I-EP-M12") 
-    currentModule = cpxApIEp_1
+    print(f"SETUP - FIELDBUS MODULE - {currentModule.name}") 
+    currentModule = myCPX.modules[0]
     currentArrModuleParams = arrModuleParams
     currentArrModuleParamValues = arrModuleParamValues
-    print(f"Module {currentModule.name}")
     for i, p in currentModule.module_dicts.parameters.items():
-        print(
-            f"{f'  > Read {p.name} (ID {i}):':<64}"
-            f"{f'{currentModule.read_module_parameter(i)} {p.unit}':<32}"
-        )
+        if p.name in currentArrModuleParams:
+            print(
+                f"{f'  > Read {p.name} (ID {i}):':<64}"
+                f"{f'{currentModule.read_module_parameter(i)} {p.unit}':<32}"
+            )
 
     ### Write Module Parameters for CPX-AP-I-EP-M12 Module
     print("  > Write: Fieldbus module does not have any parameters to be configured by this program.") # No parameters to write/setup for this module
@@ -170,55 +269,49 @@ with CpxAp(ip_address="192.168.0.1", timeout=1.5) as myCPX:
     print("--------------------\n")
 
     ### Read Module Parameters for CPX-AP-I-4IOL Module
-    print("SETUP - IOLM MODULE - CPX-AP-I-4IOL-M12")
-    currentModule = cpxApI4iol_1
+    print(f"SETUP - IOLM MODULE - {currentModule.name}")
+    currentModule = myCPX.modules[1]
     currentArrModuleParams = arrIolmParams
     currentArrModuleParamValues = arrIolmParamValues
-    print(f"Module {currentModule.name}")
     for i, p in currentModule.module_dicts.parameters.items():
-        print(
-            f"{f'  > Read {p.name} (ID {i}):':<64}"
-            f"{f'{currentModule.read_module_parameter(i)} {p.unit}':<32}"
-        ) 
+        if p.name in currentArrModuleParams:
+            print(
+                f"{f'  > Read {p.name} (ID {i}):':<64}"
+                f"{f'{currentModule.read_module_parameter(i)[iPort]} {p.unit}':<32}"
+            ) 
     
     ### Write Module Parameters for CPX-AP-I-4IOL Module 
     for parameter in range(len(currentArrModuleParams)):
         currentModule.write_module_parameter(currentArrModuleParams[parameter], currentArrModuleParamValues[parameter], iPort)
     print("SETUP - IOLM MODULE - COMPLETE")
     print("--------------------\n")
-
+#
+# -----------------------------------------------------------
     #region Pre-Operate
     ### Wait for VTUG to reach OPERATE State
     print("PRE-OPERATE - VTUG IOLD Port Status Check") 
-    portOpCheck = cpxApI4iol_1.read_fieldbus_parameters()
-    print(f"Port # is: {iPort}")
+    portOpCheck = currentModule.read_fieldbus_parameters()
+    print(f"  > IO-Link Device Port # is: {iPort}")
     while portOpCheck[iPort]["Port status information"] != "OPERATE":
-        portOpCheck = cpxApI4iol_1.read_fieldbus_parameters()
-        time.sleep(iSleepTime)
+        portOpCheck = currentModule.read_fieldbus_parameters()
+        time.sleep(1.000)
         print("........Waiting for OPERATE state")
+        # MAWS: This will stay forever if something fails. You can change this to run only n-times and break or run some diagnosis on the module and print it with myCPX.modules[1].read_diagnosis_information()
+        # NEED SOME KIND OF CATCH HERE!!!!!
     print("PRE-OPERATE - OPERATE STATUS ACHIEVED")
     print("--------------------\n")
-    
+#
+# -----------------------------------------------------------    
     #region Operate
     ### Valve Test
-    #myCPX.set_timeout(0) # Set Modbus Timeout to Allow for Pauses
-
-    # read process data
-    #raw_data = b'\x00\x00\x00\x00\x00\x00\x00\x00'  # Initialize Data for Proper Length
-    raw_data = cpxApI4iol_1.read_channel(iPort, full_size=True)
-
-    # interpret it according to datasheet
-    process_data_in = read_process_data_in(raw_data)
+    # Initialize Valves
+    initialize_valves(currentModule, iPort, arrVAEMParamValues[0], False)
     
-    # write valve outputs
-    cpxApI4iol_1.write_channel(0,1)
-
-    ('''
-    if param[SDAS_CHANNEL]["Port status information"] == "PORT_DIAG":
-            print(myIOL.read_diagnosis_information())
-            break
-''')
-
+    # Cycle Valves
+    cycle_valves(currentModule, iPort, arrVAEMParamValues[0], fSleepTime, 10)
+#
+# -----------------------------------------------------------    
+#region Add'l Features
 ("""
 Set up IO-Link Master Port 1 parameters
 Detect IO-Link device and print info
@@ -236,6 +329,9 @@ Module health - whatever is available
 ---future IOLM and IOLM Port parameters to read/write: 20074, 20076, 20077, 20075
 -check PQI bytes for useful status info
 """)
+#
+# -----------------------------------------------------------
+#region Termination
     # myCPX.connected
 print("Program Completed")
 myCPX.shutdown()

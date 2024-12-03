@@ -4,7 +4,7 @@
 from cpx_io.cpx_system.cpx_ap.cpx_ap import CpxAp
 
 # for cpx_ap, the attached modules are found automatically
-with CpxAp(ip_address="192.168.1.1") as myCPX:
+with CpxAp(ip_address="192.168.0.1") as myCPX:
     # Read the automatically generated documentation on your system folder
     # It gives an overview of all parameters and functions of each module
     print(myCPX.docu_path)
