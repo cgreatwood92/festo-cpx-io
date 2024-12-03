@@ -76,7 +76,7 @@ from src.cpx_io.utils.boollist import boollist_to_bytes         # Boolean conver
 xAllCoilInitState = False
 sIpAddress = '192.168.0.1'      # IP Address of the CPX-AP-I-EP-M12 module. Can be verified in Festo Automation Suite P0.12001 Default IP Address: 192.168.1.1
 fModbusTimeout = 10.0           # Modbus timeout in seconds, as float. This value must be greater than fSleepTime.
-fSleepTime = 0.100              # Delay time for all sleep functions, in seconds
+fSleepTime = 0.500              # Delay time for all sleep functions, in seconds
 iNumModules = 2                 # Number of AP-I Modules in the entire system, including the fieldbus module
 iPort = 0                       # Value 0 indicates that the VTUG valve terminal is connected to the top port on the IOLM labeled Port 0.
 iTestCycles = 10                # Number of test cycles through the entire valve terminal and all available coils
