@@ -74,27 +74,28 @@ from src.cpx_io.utils.boollist import boollist_to_bytes         # Boolean conver
 #
 ### Variable Declaration
 xAllCoilInitState = False
-sIpAddress = '192.168.0.1'      # IP Address of the CPX-AP-I-EP-M12 module. Can be verified in Festo Automation Suite P0.12001 Default IP Address: 192.168.1.1
-fModbusTimeout = 10.0           # Modbus timeout in seconds, as float. This value must be greater than fSleepTime.
-fSleepTime = 0.500              # Delay time for all sleep functions, in seconds
-iNumModules = 2                 # Number of AP-I Modules in the entire system, including the fieldbus module
-iPort = 0                       # Value 0 indicates that the VTUG valve terminal is connected to the top port on the IOLM labeled Port 0.
-iTestCycles = 10                # Number of test cycles through the entire valve terminal and all available coils
+sIpAddress = '192.168.0.1'              # IP Address of the CPX-AP-I-EP-M12 module. Can be verified in Festo Automation Suite P0.12001 Default IP Address: 192.168.1.1
+fModbusTimeout = 10.0                   # Modbus timeout in seconds, as float. This value must be greater than fSleepTime.
+fSleepTime = 0.100                      # Delay time for all sleep functions, in seconds
+iNumModules = 2                         # Number of AP-I Modules in the entire system, including the fieldbus module
+iPort = 0                               # Value 0 indicates that the VTUG valve terminal is connected to the top port on the IOLM labeled Port 0.
+iTestCycles = 10                        # Number of test cycles through the entire valve terminal and all available coils
 arrModuleTypecodes = ["cpx_ap_i_ep_m12", "cpx_ap_i_4iol_m12_variant_8"] # These must be in the expected order
-arrModuleParams = []            # Refer to CPX-AP-I-EP-M12 manual for parameter index numbers.
-arrModuleParamValues = [1]
-arrIolmParams = ["Nominal Cycle Time", "Enable diagnosis of IO-Link device lost", "Validation & Backup", "Nominal Vendor ID", "DeviceID", "Port Mode"] # Refer to CPX-AP-I-4IOL-M12 manual for parameter index numbers.
-arrIolmParamValues = [0, True, "Type compatible Device V1.1", 333, 800, "IOL_AUTOSTART"]  # Port Mode must be set after Nominal Vendor ID and DeviceID
-arrVAEMParams = ["OutputDataLength"]
-arrVAEMParamValues = [4]
+arrModuleParams = []                    # Parameters to be configured for the Ethernet/IP/ModbusTCP fieldbus module. Refer to CPX-AP-I-EP-M12 manual for parameter index numbers.
+arrModuleParamValues = [1]              # Parameter values for the Ethernet/IP/ModbusTCP fieldbus module
+arrIolmParams = ["Nominal Cycle Time", "Enable diagnosis of IO-Link device lost", "Validation & Backup", "Nominal Vendor ID", "DeviceID", "Port Mode"] # Parameters to be configured for the IO-Link Master module. Refer to CPX-AP-I-4IOL-M12 manual for parameter index numbers.
+arrIolmParamValues = [0, True, "Type compatible Device V1.1", 333, 800, "IOL_AUTOSTART"]  # Parameter values for the IO-Link Master module. Port Mode must be set after Nominal Vendor ID and DeviceID
+arrVAEMParams = ["OutputDataLength"]    # Parameters to be configured for the VAEM I-Port interface on the valve terminal     
+arrVAEMParamValues = [4]                # Parameter values for the VAEM I-Port interface on the valve terminal
+liTestSequence = [11,15,4,7,0,23,19]    # Sequence of COILS to be tested in sequence. These coils will be turned ON starting from the 1st list value to the last, one at a time. Index starts with 0.
 #
 # -----------------------------------------------------------
 #region Functions
 #
 # Function - Initialize Valves
-def initialize_valves(iModule: int, iChannel: int, iOutputDataLength: int, xStartCondition: bool):
+def initialize_all_coils(iModule: int, iChannel: int, iOutputDataLength: int, xStartCondition: bool):
     """
-    Function to initialize a list of valve states, convert it to a byte list, and then execute the desired initialized state.
+    Function to initialize a list of valve coil states, convert it to a byte list, and then execute the desired initialized state.
     No confirmation of valve positions is included. 
     
     Parameters:
@@ -109,7 +110,7 @@ def initialize_valves(iModule: int, iChannel: int, iOutputDataLength: int, xStar
     # Calculate the number of coils
     iNumCoils = 8 * iOutputDataLength
     
-    # Initialize the list of valve states (all OFF initially)
+    # Initialize the list of valve coil states (all OFF initially)
     xCoilInitStateList = [xStartCondition] * iNumCoils
     
     # Convert the boolean list to a byte list
@@ -118,14 +119,14 @@ def initialize_valves(iModule: int, iChannel: int, iOutputDataLength: int, xStar
     # Write the initialization values from the byte list to the valve terminal
     iModule.write_channel(iChannel, bCoilInitStateList)
 
-    # Wait for 1 second for valve to achieve their desired initialized state                    
+    # Wait for 1 second for valve coils to achieve their desired initialized state                    
     time.sleep(1.000)
     
     #Return nothing
     return
 #
-# Function - Cycle Valves
-def cycle_valves(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, fCycleSleep: float = 0.100, iNumCycles: int = 10):
+# Function - Cycle All Coils
+def cycle_all_coils(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, fCycleSleep: float = 0.100, iNumCycles: int = 10):
     """
     Function to cycle all valve coils in order. 
 
@@ -189,7 +190,82 @@ def cycle_valves(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, fC
             time.sleep(fCycleSleep)
 
         # Print current total cycle count
-        print(f"  > Cycle {i} Complete.")
+        print(f"  > Cycle {i + 1} Complete.")
+    
+    # Print current system time at the end of all cycles
+    end_time = datetime.now()
+    print(f"  > System Time at Test Completion: \t{end_time.strftime('%Y-%m-%d %H:%M:%S')}")  
+
+    #Return nothing
+    return
+#
+# Function - Control Coils in a Specific Sequence
+def control_coils(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, fCycleSleep: float = 0.100, iNumCycles: int = 10, liEnableCoilSeq: list = None):
+    """
+    Function to cycle a specific order of valves. 
+
+    Parameters:
+    iModule (int): Integer indicating the position of the IO-Link Master in the AP System.
+    iChannel (int): Integer indicating the position of the valve terminal on the IO-Link Master. Port 0 (top) of the module is value 0.
+    iOutputDataLength (int): Integer indicating the number of control bytes (i.e PLC to Valve Terminal) for the valve terminal. Can be found in FAS or the Webserver.
+    fCycleSleep (float): Float indicating the time for the coil states to be maintained before the next step in the cycle, in seconds. 
+    iNumCycles (int): Integer indicating the number of cycles to repeat the entire process. Not to exceed the maximum. 
+    liEnableCoilSeq (list): List of coil positions from 0...(iNumCoils - 1) to be Enabled in a specific sequence. The order of this list indicates the sequence. 
+
+    Returns:
+    None
+    """
+    ### Import
+    #
+    from datetime import datetime, timedelta
+
+    ### Variable Declaration
+    fMinCycleSleep = 0.100              # Define minimum allowed sleep time between coil state changes, in milliseconds
+    iMaxCycles = 1000                   # Define the maximum allowed cycles  
+    iNumCoils = 8 * iOutputDataLength   # Calculate the number of coils
+
+    # Input Check - Check if fCycleSleep is below the minimum allowed sleep time
+    if fCycleSleep < fMinCycleSleep:
+        print(f"Warning: fCycleSleep is below the minimum allowed value of {fMinCycleSleep} seconds. Modifying to {fMinCycleSleep} seconds.")
+        fCycleSleep = fMinCycleSleep
+    
+    # Input Check - Check if iNumCycles exceeds the maximum allowed cycles
+    if iNumCycles > iMaxCycles:
+        print(f"Error: iNumCycles exceeds the maximum allowed value of {iMaxCycles}. Aborting function.")
+        sys.exit()
+    else: 
+        # Calculate test total execution time in seconds
+        total_execution_time = iNumCycles * len(liEnableCoilSeq) * 2 * fCycleSleep
+
+        # Calculate the estimated completion time in real-world computer system time format
+        start_time = datetime.now()
+        estimated_completion_time = start_time + timedelta(seconds=total_execution_time)
+        print(f"  > Estimated completion time: \t\t{estimated_completion_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+    # Perform Test for iNumCycles of All Coils
+    for i in range(iNumCycles):
+        # Initialize the list of valve states to OFF
+        xCoilStateList = [False] * iNumCoils
+
+        for j in range(len(liEnableCoilSeq)):
+            # Set the coil to ON
+            xCoilStateList[liEnableCoilSeq[j]] = True
+            bCoilStateList = boollist_to_bytes(xCoilStateList)
+            iModule.write_channel(iChannel, bCoilStateList)
+
+            # Wait for fCycleSleep seconds for valve to achieve their desired initialized state and hold                   
+            time.sleep(fCycleSleep)
+
+            # Reset the coil to OFF
+            xCoilStateList[liEnableCoilSeq[j]] = False
+            bCoilStateList = boollist_to_bytes(xCoilStateList)
+            iModule.write_channel(iChannel, bCoilStateList)
+
+            # Wait for fCycleSleep seconds for valve to achieve their desired initialized state and hold                   
+            time.sleep(fCycleSleep)
+
+        # Print current total cycle count
+        print(f"  > Cycle {i + 1} Complete.")
     
     # Print current system time at the end of all cycles
     end_time = datetime.now()
@@ -304,45 +380,53 @@ with CpxAp(ip_address=sIpAddress, timeout = fModbusTimeout) as myCPX:
     print("PRE-OPERATE - VTUG IOLD Port Status Check") 
     portOpCheck = currentModule.read_fieldbus_parameters()
     print(f"  > IO-Link Device Port # is: {iPort}")
-    while portOpCheck[iPort]["Port status information"] != "OPERATE":
+
+    attempts = 0
+    max_attempts = 20
+
+    while portOpCheck[iPort]["Port status information"] != "OPERATE" and attempts < max_attempts:
         portOpCheck = currentModule.read_fieldbus_parameters()
         time.sleep(1.000)
+        attempts += 1
         print("........Waiting for OPERATE state")
-        # MAWS: This will stay forever if something fails. You can change this to run only n-times and break or run some diagnosis on the module and print it with myCPX.modules[1].read_diagnosis_information()
-        # NEED SOME KIND OF CATCH HERE!!!!!
-    print("PRE-OPERATE - OPERATE STATUS ACHIEVED")
-    print("--------------------\n")
+
+        if attempts >= max_attempts:
+            print("Reached maximum number of attempts. Exiting loop.")
+            
+            # Optionally, you can add diagnostic information here
+            diagnosis_info = myCPX.modules[1].read_diagnosis_information()
+            print(f"Diagnosis Information: {diagnosis_info}")
+            break
+    
+    # Check if OPERATE state is achieved by VTUG
+    if portOpCheck[iPort]["Port status information"] == "OPERATE":
+        print("PRE-OPERATE - OPERATE STATUS ACHIEVED")
+        print("--------------------\n")
+    else:
+        print("PRE-OPERATE - FAILED TO ACHIEVE OPERATE STATUS")
+        print(f"Aborting program. Incorrect OPERATE statenot achieved. Please correct the situation and start program again.")
+        print("--------------------\n")
+        sys.exit("Aborting script: Condition not satisfied.") 
 #
 # -----------------------------------------------------------    
     #region Operate
     ### Valve Test
     print("OPERATE - VALVE TERMINAL TEST - IN PROGRESS") 
     # Initialize Valves
-    initialize_valves(currentModule, iPort, arrVAEMParamValues[0], xAllCoilInitState)
+    initialize_all_coils(currentModule, iPort, arrVAEMParamValues[0], xAllCoilInitState)   # This function turns OFF all valve coils on the valve terminal.
     
     # Cycle Valves
-    cycle_valves(currentModule, iPort, arrVAEMParamValues[0], fSleepTime, iTestCycles)
+    #cycle_all_coils(currentModule, iPort, arrVAEMParamValues[0], fSleepTime, iTestCycles)
+
+    # Control Valves in a Specific Sequence
+    control_coils(currentModule, iPort, arrVAEMParamValues[0], fSleepTime, iTestCycles, liTestSequence) # This function turns ON and then OFF a specific sequence of valve coils defined in Variable Declaration.
     print("OPERATE - VALVE TERMINAL TEST - COMPLETE") 
     print("--------------------\n")
 #
 # -----------------------------------------------------------    
 #region Add'l Features
 ("""
-Set up IO-Link Master Port 1 parameters
-Detect IO-Link device and print info
-Enter number of valves - if necessary
-Connect and test valves
----Check connection at all times CpxAp.Connected
-Fault detection sample code
-Module health - whatever is available
----CpxAp.Diagnostics -> ModulePresent
-
----maybe check the sensor UElSen and load voltage ULoad and current supply for each module
----check temperature of each module
----active device variant (P20090 == 8201 factory setting) IOLM
-
 ---future IOLM and IOLM Port parameters to read/write: 20074, 20076, 20077, 20075
--check PQI bytes for useful status info
 """)
 #
 # -----------------------------------------------------------
