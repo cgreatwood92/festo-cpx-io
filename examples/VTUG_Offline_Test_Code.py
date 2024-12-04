@@ -53,6 +53,18 @@
 #   FAS IO-Link Device Plug-In  2.9.0.37
 #
 # -----------------------------------------------------------
+### Adapting this code for different I-Port VTUG Variants
+#
+#   Step    Description                                                 Details
+#   1       Modify Workspace Directory under 'Append System Path'       The workspace directory that this entire repo was copied into must be modified to reflect your current workspace.
+#   2       Modify sIpAddress to match Ethernet/IP Module Ipv4 Address  Enter the IPv4 network IP address address of your CPX-AP-I-EP-M12 module into sIpAddress under Variable Declaration. Your PC Ethernet adapter must be on the subnet as well. 
+#   3       Modify DeviceID according to VAEM Model                     For VAEM-...-8-... models: enter value 784 into the 5th member of arrIolmParamValues[] under Variable Declaration.
+#                                                                       For VAEM-...-16-... models: enter value 800 into the 5th member of arrIolmParamValues[] under Variable Declaration.
+#                                                                       For VAEM-...-24-... models: enter value 816 into the 5th member of arrIolmParamValues[] under Variable Declaration.
+#   4       Modify OutputDataLength according to VAEM Model             For VAEM-...-8-... models: enter value 2 into the 1st member of arrVAEMParamValues[] under Variable Declaration.
+#                                                                       For VAEM-...-16-... models: enter value 4 into the 1st member of arrVAEMParamValues[] under Variable Declaration.
+#                                                                       For VAEM-...-24-... models: enter value 6 into the 1st member of arrVAEMParamValues[] under Variable Declaration. 
+# -----------------------------------------------------------
 #region Header
 print("Program Started")
 print("--------------------\n")
@@ -79,7 +91,7 @@ fModbusTimeout = 10.0                   # Modbus timeout in seconds, as float. T
 fSleepTime = 0.100                      # Delay time for all sleep functions, in seconds
 iNumModules = 2                         # Number of AP-I Modules in the entire system, including the fieldbus module
 iPort = 0                               # Value 0 indicates that the VTUG valve terminal is connected to the top port on the IOLM labeled Port 0.
-iTestCycles = 10                        # Number of test cycles through the entire valve terminal and all available coils
+iTestCycles = 999                        # Number of test cycles through the entire valve terminal and all available coils
 arrModuleTypecodes = ["cpx_ap_i_ep_m12", "cpx_ap_i_4iol_m12_variant_8"] # These must be in the expected order
 arrModuleParams = []                    # Parameters to be configured for the Ethernet/IP/ModbusTCP fieldbus module. Refer to CPX-AP-I-EP-M12 manual for parameter index numbers.
 arrModuleParamValues = [1]              # Parameter values for the Ethernet/IP/ModbusTCP fieldbus module
