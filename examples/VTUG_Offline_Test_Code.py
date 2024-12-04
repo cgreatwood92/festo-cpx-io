@@ -87,7 +87,7 @@ arrIolmParams = ["Nominal Cycle Time", "Enable diagnosis of IO-Link device lost"
 arrIolmParamValues = [0, True, "Type compatible Device V1.1", 333, 800, "IOL_AUTOSTART"]  # Parameter values for the IO-Link Master module. Port Mode must be set after Nominal Vendor ID and DeviceID
 arrVAEMParams = ["OutputDataLength"]    # Parameters to be configured for the VAEM I-Port interface on the valve terminal     
 arrVAEMParamValues = [4]                # Parameter values for the VAEM I-Port interface on the valve terminal
-liTestSequence = [11,15,4,7,0,23,19]    # Sequence of COILS to be tested in sequence. These coils will be turned ON starting from the 1st list value to the last, one at a time. Index starts with 0.
+liTestSequence = [1, 11, 16, 3, 2, 12, 10, 23, 8, 9, 21, 4, 13, 19, 20, 14, 5, 15, 0, 7, 18, 6, 22, 17]    # Sequence of COILS to be tested in sequence. These coils will be turned ON starting from the 1st list value to the last, one at a time. Index starts with 0.
 #
 # -----------------------------------------------------------
 #region Functions
