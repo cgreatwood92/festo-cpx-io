@@ -466,6 +466,10 @@ with CpxAp(ip_address=sIpAddress, timeout = fModbusTimeout) as myCPX:
         iTestCycleCountAdjustment = input("  > What was your last completed cycle count? Refer to your Terminal prinout for this value if you don't know.")
         # Convert the input to an integer
         iTestCycleCountAdjustment = int(iTestCycleCountAdjustment)
+        if iTestCycleCountAdjustment > (iTestCycles - 1):
+            print(f"Aborting program. Cycle Count Adjustment value entered is out of range. Please enter a value between 0 and {iTestCycles-1}.")
+            print("--------------------\n")
+            sys.exit("Aborting script: Condition not satisfied.")
         print(f"  > Cycle Count Adjustment value entered: {iTestCycleCountAdjustment}")
     elif response == 'n':
         iTestCycleCountAdjustment = 0
