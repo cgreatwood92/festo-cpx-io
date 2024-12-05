@@ -77,8 +77,8 @@ import struct
 import time     # Time Module
 #
 ### Append System Path
-#sys.path.append('C:\\Users\\lab4-local\\Documents\\GitHub\\festo-cpx-io-1')   # Add path to workspace directory
-sys.path.append('C:\\Users\\ColinGreatwood\\Documents\\GitHub\\festo-cpx-io')   # Add path to workspace directory
+sys.path.append('C:\\Users\\lab4-local\\Documents\\GitHub\\festo-cpx-io-1')   # Add path to workspace directory
+#sys.path.append('C:\\Users\\ColinGreatwood\\Documents\\GitHub\\festo-cpx-io')   # Add path to workspace directory
 #
 ### Import - Additional Module and Math Libraries
 from src.cpx_io.cpx_system.cpx_ap.cpx_ap import CpxAp           # CPX-AP Modules Library 
@@ -91,7 +91,7 @@ fModbusTimeout = 10.0                   # Modbus timeout in seconds, as float. T
 fSleepTime = 0.100                      # Delay time for all sleep functions, in seconds
 iNumModules = 2                         # Number of AP-I Modules in the entire system, including the fieldbus module
 iPort = 0                               # Value 0 indicates that the VTUG valve terminal is connected to the top port on the IOLM labeled Port 0.
-iTestCycles = 10                        # Number of test cycles through the entire valve terminal and all available coils
+iTestCycles = 10000000                  # Number of test cycles through the entire valve terminal and all available coils
 arrModuleTypecodes = ["cpx_ap_i_ep_m12", "cpx_ap_i_4iol_m12_variant_8"] # These must be in the expected order
 arrModuleParams = []                    # Parameters to be configured for the Ethernet/IP/ModbusTCP fieldbus module. Refer to CPX-AP-I-EP-M12 manual for parameter index numbers.
 arrModuleParamValues = [1]              # Parameter values for the Ethernet/IP/ModbusTCP fieldbus module
@@ -257,7 +257,7 @@ def control_coils(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, i
 
     ### Variable Declaration
     fMinCycleSleep = 0.100              # Define minimum allowed sleep time between coil state changes, in milliseconds
-    iMaxCycles = 1000                   # Define the maximum allowed cycles  
+    iMaxCycles = 10000001               # Define the maximum allowed cycles  
     iNumCoils = 8 * iOutputDataLength   # Calculate the number of coils
 
     # Input Check - Check if either stepStateTime and stepDelay are below the minimum allowed sleep time
