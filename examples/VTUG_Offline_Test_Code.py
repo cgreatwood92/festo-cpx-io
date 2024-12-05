@@ -92,6 +92,7 @@ fSleepTime = 0.100                      # Delay time for all sleep functions, in
 iNumModules = 2                         # Number of AP-I Modules in the entire system, including the fieldbus module
 iPort = 0                               # Value 0 indicates that the VTUG valve terminal is connected to the top port on the IOLM labeled Port 0.
 iTestCycles = 10000000                  # Number of test cycles through the entire valve terminal and all available coils
+iTestCycleCountAdjustment = 0           # Adjustment value for the cycle count printout if the test is stopped. This value must be less than the limit in control_coils.
 arrModuleTypecodes = ["cpx_ap_i_ep_m12", "cpx_ap_i_4iol_m12_variant_8"] # These must be in the expected order
 arrModuleParams = []                    # Parameters to be configured for the Ethernet/IP/ModbusTCP fieldbus module. Refer to CPX-AP-I-EP-M12 manual for parameter index numbers.
 arrModuleParamValues = [1]              # Parameter values for the Ethernet/IP/ModbusTCP fieldbus module
@@ -237,7 +238,7 @@ def cycle_all_coils(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4,
     return
 #
 # Function - Control Coils in a Specific Sequence
-def control_coils(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, iNumCycles: int = 10, dictCoilSeq: dict = None):
+def control_coils(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, iNumCycles: int = 10, dictCoilSeq: dict = None, iCycleCountAdjustment: int = 0):
     """
     Function to cycle a specific order of valves. 
 
@@ -247,7 +248,8 @@ def control_coils(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, i
     iOutputDataLength (int): Integer indicating the number of control bytes (i.e PLC to Valve Terminal) for the valve terminal. Can be found in FAS or the Webserver. 
     iNumCycles (int): Integer indicating the number of cycles to repeat the entire process. Not to exceed the maximum. 
     dictCoilSeq (dict): Dict of coil positions from 0...(iNumCoils - 1) to be tested in a specific sequence. Coils number, coil test state, test state wait time, final coil state, and step delay time are indicated. 
-
+    iCycleCountAdjustment (int): Integer indicating the number of cycles already completed. This value must be less than the maximuim indicated in iMaxCycles. This may be used to enter a value of cycles previously completed during an interruped test. 
+    
     Returns:
     None
     """
@@ -277,7 +279,7 @@ def control_coils(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, i
         sys.exit()
     else: 
         # Calculate test total execution time in seconds
-        total_execution_time = iNumCycles * cycle_execution_time_sum
+        total_execution_time = (iNumCycles - iCycleCountAdjustment) * cycle_execution_time_sum
 
         # Calculate the estimated completion time in real-world computer system time format
         start_time = datetime.now()
@@ -285,7 +287,7 @@ def control_coils(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, i
         print(f"  > Estimated completion time: \t\t{estimated_completion_time.strftime('%Y-%m-%d %H:%M:%S')}")
     
     # Perform Test for iNumCycles of All Coils
-    for i in range(iNumCycles):
+    for i in range(iNumCycles - iCycleCountAdjustment):
         # Initialize the list of valve states to OFF
         xCoilStateList = [False] * iNumCoils
 
@@ -453,13 +455,34 @@ with CpxAp(ip_address=sIpAddress, timeout = fModbusTimeout) as myCPX:
 #
 # -----------------------------------------------------------    
     #region Operate
+    ### Adjust Cycle Count
+    print("OPERATE - CYCLE COUNT ADJUSTMENT") 
+    # Ask the user if they want to enter a manual adjustment value
+    response = input("  > Do you want to enter a manual cycle count adjustment? (Enter lowercase 'y' for Yes and lowercase 'n' for No: ")
+
+    # Check the user's response
+    if response == 'y':
+        # Ask for the last completed cycle count
+        iTestCycleCountAdjustment = input("  > What was your last completed cycle count? Refer to your Terminal prinout for this value if you don't know.")
+        # Convert the input to an integer
+        iTestCycleCountAdjustment = int(iTestCycleCountAdjustment)
+        print(f"  > Cycle Count Adjustment value entered: {iTestCycleCountAdjustment}")
+    elif response == 'n':
+        iTestCycleCountAdjustment = 0
+        print("  > Proceeding with no adjustment.")
+    else:
+        print("  > Invalid input. Please enter 'y' or 'n'.")
+        sys.exit()
+    print("OPERATE - CYCLE COUNT ADJUSTMENT - COMPLETE") 
+    print("--------------------\n")
+
     ### Valve Test
     print("OPERATE - VALVE TERMINAL TEST - IN PROGRESS") 
     # Initialize Valves
     initialize_all_coils(currentModule, iPort, arrVAEMParamValues[0], xAllCoilInitState)   # This function turns OFF all valve coils on the valve terminal.
 
     # Control Valves in a Specific Sequence
-    control_coils(currentModule, iPort, arrVAEMParamValues[0], iTestCycles, dictTestSequence) # This function turns ON and then OFF a specific sequence of valve coils defined in Variable Declaration.
+    control_coils(currentModule, iPort, arrVAEMParamValues[0], iTestCycles, dictTestSequence, iTestCycleCountAdjustment) # This function turns ON and then OFF a specific sequence of valve coils defined in Variable Declaration.
     print("OPERATE - VALVE TERMINAL TEST - COMPLETE") 
     print("--------------------\n")
 #
