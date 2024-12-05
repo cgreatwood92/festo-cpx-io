@@ -85,7 +85,7 @@ from src.cpx_io.cpx_system.cpx_ap.cpx_ap import CpxAp           # CPX-AP Modules
 from src.cpx_io.utils.boollist import boollist_to_bytes         # Boolean conversion utility for managing the raw data going to the I-Port VTUG
 #
 ### Variable Declaration
-xAllCoilInitState = False               # 
+xAllCoilInitState = False               # Value to initialize coils to before test. Used with initialize_all_coils function.
 sIpAddress = '192.168.0.1'              # IP Address of the CPX-AP-I-EP-M12 module. Can be verified in Festo Automation Suite P0.12001 Default IP Address: 192.168.1.1
 fModbusTimeout = 10.0                   # Modbus timeout in seconds, as float. This value must be greater than fSleepTime.
 fSleepTime = 0.100                      # Delay time for all sleep functions, in seconds
