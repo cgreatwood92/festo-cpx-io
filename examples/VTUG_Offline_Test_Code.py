@@ -260,7 +260,7 @@ def control_coils(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, i
     iMaxCycles = 1000                   # Define the maximum allowed cycles  
     iNumCoils = 8 * iOutputDataLength   # Calculate the number of coils
 
-    # Input Check - Check if fCycleSleep is below the minimum allowed sleep time
+    # Input Check - Check if either stepStateTime and stepDelay are below the minimum allowed sleep time
     cycle_execution_time_sum = 0
     for i in range(len(dictCoilSeq)):
         if dictCoilSeq[i]["stepStateTime"] < fMinCycleSleep:
