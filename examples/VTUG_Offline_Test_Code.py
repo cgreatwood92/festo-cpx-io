@@ -85,13 +85,13 @@ from src.cpx_io.cpx_system.cpx_ap.cpx_ap import CpxAp           # CPX-AP Modules
 from src.cpx_io.utils.boollist import boollist_to_bytes         # Boolean conversion utility for managing the raw data going to the I-Port VTUG
 #
 ### Variable Declaration
-xAllCoilInitState = False
+xAllCoilInitState = False               # 
 sIpAddress = '192.168.0.1'              # IP Address of the CPX-AP-I-EP-M12 module. Can be verified in Festo Automation Suite P0.12001 Default IP Address: 192.168.1.1
 fModbusTimeout = 10.0                   # Modbus timeout in seconds, as float. This value must be greater than fSleepTime.
 fSleepTime = 0.100                      # Delay time for all sleep functions, in seconds
 iNumModules = 2                         # Number of AP-I Modules in the entire system, including the fieldbus module
 iPort = 0                               # Value 0 indicates that the VTUG valve terminal is connected to the top port on the IOLM labeled Port 0.
-iTestCycles = 999                        # Number of test cycles through the entire valve terminal and all available coils
+iTestCycles = 10                        # Number of test cycles through the entire valve terminal and all available coils
 arrModuleTypecodes = ["cpx_ap_i_ep_m12", "cpx_ap_i_4iol_m12_variant_8"] # These must be in the expected order
 arrModuleParams = []                    # Parameters to be configured for the Ethernet/IP/ModbusTCP fieldbus module. Refer to CPX-AP-I-EP-M12 manual for parameter index numbers.
 arrModuleParamValues = [1]              # Parameter values for the Ethernet/IP/ModbusTCP fieldbus module
@@ -99,7 +99,32 @@ arrIolmParams = ["Nominal Cycle Time", "Enable diagnosis of IO-Link device lost"
 arrIolmParamValues = [0, True, "Type compatible Device V1.1", 333, 800, "IOL_AUTOSTART"]  # Parameter values for the IO-Link Master module. Port Mode must be set after Nominal Vendor ID and DeviceID
 arrVAEMParams = ["OutputDataLength"]    # Parameters to be configured for the VAEM I-Port interface on the valve terminal     
 arrVAEMParamValues = [4]                # Parameter values for the VAEM I-Port interface on the valve terminal
-liTestSequence = [1, 11, 16, 3, 2, 12, 10, 23, 8, 9, 21, 4, 13, 19, 20, 14, 5, 15, 0, 7, 18, 6, 22, 17]    # Sequence of COILS to be tested in sequence. These coils will be turned ON starting from the 1st list value to the last, one at a time. Index starts with 0.
+dictTestSequence = [                    # Sequence of COILS to be tested in sequence. testIndex starts with 0 on the left side of the manifold. Odd indices are coils 12, even indices are coils 14. coilTestState and coilFinalState are True or False. stepStateTime and stepDelay are in seconds.
+    {"testIndex": 1, "coilTestState": True, "stepStateTime": 1.5, "coilFinalState": False, "stepDelay": 1.1},
+    {"testIndex": 0, "coilTestState": True, "stepStateTime": 2.0, "coilFinalState": False, "stepDelay": 1.0},
+    {"testIndex": 3, "coilTestState": True, "stepStateTime": 1.5, "coilFinalState": False, "stepDelay": 1.1},
+    {"testIndex": 2, "coilTestState": True, "stepStateTime": 2.0, "coilFinalState": False, "stepDelay": 1.0},
+    {"testIndex": 5, "coilTestState": True, "stepStateTime": 1.5, "coilFinalState": False, "stepDelay": 1.1},
+    {"testIndex": 4, "coilTestState": True, "stepStateTime": 2.0, "coilFinalState": False, "stepDelay": 1.0},
+    {"testIndex": 7, "coilTestState": True, "stepStateTime": 1.5, "coilFinalState": False, "stepDelay": 1.1},
+    {"testIndex": 6, "coilTestState": True, "stepStateTime": 2.0, "coilFinalState": False, "stepDelay": 1.0},
+    {"testIndex": 9, "coilTestState": True, "stepStateTime": 1.5, "coilFinalState": False, "stepDelay": 1.1},
+    {"testIndex": 8, "coilTestState": True, "stepStateTime": 2.0, "coilFinalState": False, "stepDelay": 1.0},
+    {"testIndex": 11, "coilTestState": True, "stepStateTime": 1.5, "coilFinalState": False, "stepDelay": 1.1},
+    {"testIndex": 10, "coilTestState": True, "stepStateTime": 2.0, "coilFinalState": False, "stepDelay": 1.0},
+    {"testIndex": 13, "coilTestState": True, "stepStateTime": 1.5, "coilFinalState": False, "stepDelay": 1.1},
+    {"testIndex": 12, "coilTestState": True, "stepStateTime": 2.0, "coilFinalState": False, "stepDelay": 1.0},
+    {"testIndex": 15, "coilTestState": True, "stepStateTime": 1.5, "coilFinalState": False, "stepDelay": 1.1},
+    {"testIndex": 14, "coilTestState": True, "stepStateTime": 2.0, "coilFinalState": False, "stepDelay": 1.0},
+    {"testIndex": 17, "coilTestState": True, "stepStateTime": 1.5, "coilFinalState": False, "stepDelay": 1.1},
+    {"testIndex": 16, "coilTestState": True, "stepStateTime": 2.0, "coilFinalState": False, "stepDelay": 1.0},
+    {"testIndex": 19, "coilTestState": True, "stepStateTime": 1.5, "coilFinalState": False, "stepDelay": 1.1},
+    {"testIndex": 18, "coilTestState": True, "stepStateTime": 2.0, "coilFinalState": False, "stepDelay": 1.0},
+    {"testIndex": 21, "coilTestState": True, "stepStateTime": 1.5, "coilFinalState": False, "stepDelay": 1.1},
+    {"testIndex": 20, "coilTestState": True, "stepStateTime": 2.0, "coilFinalState": False, "stepDelay": 1.0},
+    {"testIndex": 23, "coilTestState": True, "stepStateTime": 1.5, "coilFinalState": False, "stepDelay": 1.1},
+    {"testIndex": 22, "coilTestState": True, "stepStateTime": 2.0, "coilFinalState": False, "stepDelay": 1.0}
+]
 #
 # -----------------------------------------------------------
 #region Functions
@@ -212,17 +237,16 @@ def cycle_all_coils(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4,
     return
 #
 # Function - Control Coils in a Specific Sequence
-def control_coils(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, fCycleSleep: float = 0.100, iNumCycles: int = 10, liEnableCoilSeq: list = None):
+def control_coils(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, iNumCycles: int = 10, dictCoilSeq: dict = None):
     """
     Function to cycle a specific order of valves. 
 
     Parameters:
     iModule (int): Integer indicating the position of the IO-Link Master in the AP System.
     iChannel (int): Integer indicating the position of the valve terminal on the IO-Link Master. Port 0 (top) of the module is value 0.
-    iOutputDataLength (int): Integer indicating the number of control bytes (i.e PLC to Valve Terminal) for the valve terminal. Can be found in FAS or the Webserver.
-    fCycleSleep (float): Float indicating the time for the coil states to be maintained before the next step in the cycle, in seconds. 
+    iOutputDataLength (int): Integer indicating the number of control bytes (i.e PLC to Valve Terminal) for the valve terminal. Can be found in FAS or the Webserver. 
     iNumCycles (int): Integer indicating the number of cycles to repeat the entire process. Not to exceed the maximum. 
-    liEnableCoilSeq (list): List of coil positions from 0...(iNumCoils - 1) to be Enabled in a specific sequence. The order of this list indicates the sequence. 
+    dictCoilSeq (dict): Dict of coil positions from 0...(iNumCoils - 1) to be tested in a specific sequence. Coils number, coil test state, test state wait time, final coil state, and step delay time are indicated. 
 
     Returns:
     None
@@ -237,44 +261,51 @@ def control_coils(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, f
     iNumCoils = 8 * iOutputDataLength   # Calculate the number of coils
 
     # Input Check - Check if fCycleSleep is below the minimum allowed sleep time
-    if fCycleSleep < fMinCycleSleep:
-        print(f"Warning: fCycleSleep is below the minimum allowed value of {fMinCycleSleep} seconds. Modifying to {fMinCycleSleep} seconds.")
-        fCycleSleep = fMinCycleSleep
-    
+    cycle_execution_time_sum = 0
+    for i in range(len(dictCoilSeq)):
+        if dictCoilSeq[i]["stepStateTime"] < fMinCycleSleep:
+            print(f"Warning: Step {i} stepStateTime = {dictCoilSeq[i]["stepStateTime"]} seconds is below the minimum allowed value of {fMinCycleSleep} seconds. Modifying to {fMinCycleSleep} seconds.")
+            fCycleSleep = fMinCycleSleep
+        elif dictCoilSeq[i]["stepDelay"] < fMinCycleSleep:
+            print(f"Warning: Step {i} stepDelay = {dictCoilSeq[i]["stepDelay"]} seconds is below the minimum allowed value of {fMinCycleSleep} seconds. Modifying to {fMinCycleSleep} seconds.")
+            fCycleSleep = fMinCycleSleep
+        cycle_execution_time_sum = cycle_execution_time_sum + dictCoilSeq[i]["stepStateTime"] + dictCoilSeq[i]["stepDelay"]
+
     # Input Check - Check if iNumCycles exceeds the maximum allowed cycles
     if iNumCycles > iMaxCycles:
         print(f"Error: iNumCycles exceeds the maximum allowed value of {iMaxCycles}. Aborting function.")
         sys.exit()
     else: 
         # Calculate test total execution time in seconds
-        total_execution_time = iNumCycles * len(liEnableCoilSeq) * 2 * fCycleSleep
+        total_execution_time = iNumCycles * cycle_execution_time_sum
 
         # Calculate the estimated completion time in real-world computer system time format
         start_time = datetime.now()
         estimated_completion_time = start_time + timedelta(seconds=total_execution_time)
         print(f"  > Estimated completion time: \t\t{estimated_completion_time.strftime('%Y-%m-%d %H:%M:%S')}")
-
+    
     # Perform Test for iNumCycles of All Coils
     for i in range(iNumCycles):
         # Initialize the list of valve states to OFF
         xCoilStateList = [False] * iNumCoils
 
-        for j in range(len(liEnableCoilSeq)):
-            # Set the coil to ON
-            xCoilStateList[liEnableCoilSeq[j]] = True
+        for j in range(len(dictCoilSeq)):
+            # Set the coil to desired coilTestState
+            xCoilStateList[dictCoilSeq[j]["testIndex"]] = dictCoilSeq[j]["coilTestState"]
             bCoilStateList = boollist_to_bytes(xCoilStateList)
             iModule.write_channel(iChannel, bCoilStateList)
 
-            # Wait for fCycleSleep seconds for valve to achieve their desired initialized state and hold                   
-            time.sleep(fCycleSleep)
+            # Wait for stepStateTime seconds for valve to achieve their desired test state and hold                   
+            time.sleep(dictCoilSeq[j]["stepStateTime"])
 
-            # Reset the coil to OFF
-            xCoilStateList[liEnableCoilSeq[j]] = False
-            bCoilStateList = boollist_to_bytes(xCoilStateList)
-            iModule.write_channel(iChannel, bCoilStateList)
+            if dictCoilSeq[j]["coilFinalState"] != dictCoilSeq[j]["coilTestState"]:
+                # Set the coil to desired coilFinalState
+                xCoilStateList[dictCoilSeq[j]["testIndex"]] = dictCoilSeq[j]["coilFinalState"]
+                bCoilStateList = boollist_to_bytes(xCoilStateList)
+                iModule.write_channel(iChannel, bCoilStateList)
 
-            # Wait for fCycleSleep seconds for valve to achieve their desired initialized state and hold                   
-            time.sleep(fCycleSleep)
+                # Wait for stepDelay seconds for valve to achieve their desired final state and hold                   
+                time.sleep(dictCoilSeq[j]["stepDelay"])
 
         # Print current total cycle count
         print(f"  > Cycle {i + 1} Complete.")
@@ -431,7 +462,7 @@ with CpxAp(ip_address=sIpAddress, timeout = fModbusTimeout) as myCPX:
     #cycle_all_coils(currentModule, iPort, arrVAEMParamValues[0], fSleepTime, iTestCycles)
 
     # Control Valves in a Specific Sequence
-    control_coils(currentModule, iPort, arrVAEMParamValues[0], fSleepTime, iTestCycles, liTestSequence) # This function turns ON and then OFF a specific sequence of valve coils defined in Variable Declaration.
+    control_coils(currentModule, iPort, arrVAEMParamValues[0], iTestCycles, dictTestSequence) # This function turns ON and then OFF a specific sequence of valve coils defined in Variable Declaration.
     print("OPERATE - VALVE TERMINAL TEST - COMPLETE") 
     print("--------------------\n")
 #
