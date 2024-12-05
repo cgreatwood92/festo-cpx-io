@@ -310,7 +310,7 @@ def control_coils(iModule: int, iChannel: int = 0, iOutputDataLength: int = 4, i
                 time.sleep(dictCoilSeq[j]["stepDelay"])
 
         # Print current total cycle count
-        print(f"  > Cycle {i + 1} Complete.")
+        print(f"  > Cycle {i + 1 + iCycleCountAdjustment} Complete.")
     
     # Print current system time at the end of all cycles
     end_time = datetime.now()
