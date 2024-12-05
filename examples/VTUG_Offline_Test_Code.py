@@ -92,7 +92,7 @@ fSleepTime = 0.100                      # Delay time for all sleep functions, in
 iNumModules = 2                         # Number of AP-I Modules in the entire system, including the fieldbus module
 iPort = 0                               # Value 0 indicates that the VTUG valve terminal is connected to the top port on the IOLM labeled Port 0.
 iTestCycles = 10000000                  # Number of test cycles through the entire valve terminal and all available coils
-iTestCycleCountAdjustment = 0           # Adjustment value for the cycle count printout if the test is stopped. This value must be less than the limit in control_coils.
+iTestCycleCountAdjustment = 0           # Initialization of adjustment value for the cycle count printout if the test is stopped. This should always be zero, here under Variable Declaration. It is modified in the Operate region.
 arrModuleTypecodes = ["cpx_ap_i_ep_m12", "cpx_ap_i_4iol_m12_variant_8"] # These must be in the expected order
 arrModuleParams = []                    # Parameters to be configured for the Ethernet/IP/ModbusTCP fieldbus module. Refer to CPX-AP-I-EP-M12 manual for parameter index numbers.
 arrModuleParamValues = [1]              # Parameter values for the Ethernet/IP/ModbusTCP fieldbus module
@@ -457,15 +457,16 @@ with CpxAp(ip_address=sIpAddress, timeout = fModbusTimeout) as myCPX:
     #region Operate
     ### Adjust Cycle Count
     print("OPERATE - CYCLE COUNT ADJUSTMENT") 
-    # Ask the user if they want to enter a manual adjustment value
+    # Ask the user if they want to enter a manual cycle count adjustment value
     response = input("  > Do you want to enter a manual cycle count adjustment? (Enter lowercase 'y' for Yes and lowercase 'n' for No: ")
 
     # Check the user's response
     if response == 'y':
         # Ask for the last completed cycle count
         iTestCycleCountAdjustment = input("  > What was your last completed cycle count? Refer to your Terminal prinout for this value if you don't know.")
-        # Convert the input to an integer
+        # Convert the input to an integer, in case user inputs a different type of value
         iTestCycleCountAdjustment = int(iTestCycleCountAdjustment)
+        # Check if manually entered adjustment value is within range. Acceptable range is 0 to (iTestCycles-1). iTestCycles must also be less than iMaxCycles which is defined in control_coils function. 
         if iTestCycleCountAdjustment > (iTestCycles - 1):
             print(f"Aborting program. Cycle Count Adjustment value entered is out of range. Please enter a value between 0 and {iTestCycles-1}.")
             print("--------------------\n")
