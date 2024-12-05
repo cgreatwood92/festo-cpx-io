@@ -55,7 +55,7 @@
 # -----------------------------------------------------------
 ### Adapting this code for different I-Port VTUG Variants
 #
-#   Step    Region  Section                 Description                                                 Details
+#   Step    Region  Section                 Description                                         Details
 #   1       Header  Append System Path      Modify Workspace Directory                          The workspace directory that this entire repo was copied into must be modified to reflect your current workspace
 #   2       Header  Variable Declaration    Modify sIpAddress                                   Enter the IPv4 network IP address address of your CPX-AP-I-EP-M12 module into sIpAddress under Variable Declaration. Your PC Ethernet adapter must be on the subnet as well. 
 #   3       Header  Variable Declaration    Modify DeviceID according to VAEM Model             For VAEM-...-8-... models: enter value 784 into the 5th member of arrIolmParamValues[] under Variable Declaration.
