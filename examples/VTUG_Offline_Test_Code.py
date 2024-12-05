@@ -457,9 +457,6 @@ with CpxAp(ip_address=sIpAddress, timeout = fModbusTimeout) as myCPX:
     print("OPERATE - VALVE TERMINAL TEST - IN PROGRESS") 
     # Initialize Valves
     initialize_all_coils(currentModule, iPort, arrVAEMParamValues[0], xAllCoilInitState)   # This function turns OFF all valve coils on the valve terminal.
-    
-    # Cycle Valves
-    #cycle_all_coils(currentModule, iPort, arrVAEMParamValues[0], fSleepTime, iTestCycles)
 
     # Control Valves in a Specific Sequence
     control_coils(currentModule, iPort, arrVAEMParamValues[0], iTestCycles, dictTestSequence) # This function turns ON and then OFF a specific sequence of valve coils defined in Variable Declaration.
