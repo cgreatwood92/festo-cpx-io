@@ -51,6 +51,8 @@
 #   Festo Automation Suite      2.9.0.719
 #   FAS CPX-AP Plug-In          1.8.0.111
 #   FAS IO-Link Device Plug-In  2.9.0.37
+#   Python                      3.13.1
+#   pip Package                 24.3.1
 #
 # -----------------------------------------------------------
 ### Adapting this code for different I-Port VTUG Variants
